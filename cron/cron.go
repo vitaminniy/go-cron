@@ -24,20 +24,10 @@ type Expression struct {
 	Command   string
 }
 
-// number of args in expression
-//
-// minutes hours monthdays months weekdays `command [args]`
-const numExressionArgs = 6
-
 // DumpFormatted pretty-prints expression to w.
 func (e *Expression) DumpFormatted(w io.Writer) error {
 	tw := tabwriter.NewWriter(w, 0, 0, 1, ' ', tabwriter.TabIndent)
-	defer func() error {
-		if err := tw.Flush(); err != nil {
-			return fmt.Errorf("could not flush writer: %w", err)
-		}
-		return nil
-	}()
+	defer tw.Flush() // nolint:errcheck
 
 	rows := []struct {
 		name  string
@@ -90,27 +80,48 @@ func join(ss []uint8) string {
 	return sb.String()
 }
 
+// number of args in expression
+//
+// minutes hours monthdays months weekdays `command [args]`.
+const numExressionArgs = 6
+const (
+	minutesMin = 0
+	minutesMax = 59
+
+	hoursMin = 0
+	hoursMax = 23
+
+	daysInMonthMin = 1
+	daysInMonthMax = 31
+
+	monthsMin = 1
+	monthsMax = 12
+
+	weekdaysMin = 0
+	weekdaysMax = 6
+)
+
 // ParseExpression parses line in a valid cron expression.
 func ParseExpression(line string) (e Expression, err error) {
 	args := strings.SplitN(line, " ", numExressionArgs)
 
-	if e.Minutes, err = parseTime(args[0], 0, 59); err != nil {
+	if e.Minutes, err = parseTime(args[0], minutesMin, minutesMax); err != nil {
 		return e, fmt.Errorf("invalid minutes arg: %w", err)
 	}
 
-	if e.Hours, err = parseTime(args[1], 0, 23); err != nil {
+	if e.Hours, err = parseTime(args[1], hoursMin, hoursMax); err != nil {
 		return e, fmt.Errorf("invalid hours arg: %w", err)
 	}
 
-	if e.MonthDays, err = parseTime(args[2], 1, 31); err != nil {
+	if e.MonthDays, err = parseTime(args[2], daysInMonthMin, daysInMonthMax); err != nil {
 		return e, fmt.Errorf("invalid monthdays arg: %w", err)
 	}
 
-	if e.Months, err = parseTime(args[3], 1, 12); err != nil {
+	if e.Months, err = parseTime(args[3], monthsMin, monthsMax); err != nil {
 		return e, fmt.Errorf("invalid month arg: %w", err)
 	}
 
-	if e.WeekDays, err = parseTime(args[4], 0, 6); err != nil {
+	if e.WeekDays, err = parseTime(args[4], weekdaysMin, weekdaysMax); err != nil {
 		return e, fmt.Errorf("invalid weekdays arg: %w", err)
 	}
 
@@ -251,7 +262,7 @@ func parseIntervals(intervals []string, min, max uint8) ([]uint8, error) {
 	}
 
 	result := make([]uint8, 0, (max+1)/every)
-	for i := start + min; i < max; i = i + every {
+	for i := start + min; i < max; i += every {
 		result = append(result, i)
 	}
 

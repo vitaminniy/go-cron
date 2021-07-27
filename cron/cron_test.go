@@ -1,8 +1,6 @@
 package cron
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestParseIntegral(t *testing.T) {
 	cases := []struct {
@@ -42,6 +40,8 @@ func TestParseIntegral(t *testing.T) {
 	for _, c := range cases {
 		c := c
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
 			v, err := parseIntegral(c.value, c.min, c.max)
 			if err != nil {
 				if c.shouldFail {
@@ -128,6 +128,8 @@ func TestParseRange(t *testing.T) {
 	for _, c := range cases {
 		c := c
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
 			rnge, err := parseRange(c.value, c.min, c.max)
 			if err != nil {
 				if c.shouldFail {
@@ -200,6 +202,8 @@ func TestParseSteps(t *testing.T) {
 	for _, c := range cases {
 		c := c
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
 			actual, err := parseSteps(c.steps, c.min, c.max)
 			if err != nil {
 				if c.shouldFail {
@@ -287,6 +291,8 @@ func TestParseTime(t *testing.T) {
 	for _, c := range cases {
 		c := c
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
 			actual, err := parseTime(c.input, c.min, c.max)
 			if err != nil {
 				t.Fatalf("could not parse expression: %v", err)
