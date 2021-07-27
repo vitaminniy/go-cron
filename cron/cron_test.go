@@ -1,6 +1,26 @@
 package cron
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
+
+func CompareSlices(t *testing.T, expected, actual []uint8) {
+	t.Helper()
+
+	if len(expected) != len(actual) {
+		t.Fatalf("len mismatch: want %+v; got %+v", expected, actual)
+	}
+
+	for i := range expected {
+		want := expected[i]
+		got := actual[i]
+
+		if want != got {
+			t.Errorf("mismatch at %d: want %d; got %d", i, want, got)
+		}
+	}
+}
 
 func TestParseIntegral(t *testing.T) {
 	cases := []struct {
@@ -138,18 +158,7 @@ func TestParseRange(t *testing.T) {
 				t.Fatalf("could not parse range: %v", err)
 			}
 
-			if len(c.rnge) != len(rnge) {
-				t.Fatalf("len mismatch: want %+v; got %+v", c.rnge, rnge)
-			}
-
-			for i := range c.rnge {
-				want := c.rnge[i]
-				got := rnge[i]
-
-				if want != got {
-					t.Errorf("mismatch at %d: want %d; got %d", i, want, got)
-				}
-			}
+			CompareSlices(t, c.rnge, rnge)
 		})
 	}
 }
@@ -212,18 +221,83 @@ func TestParseSteps(t *testing.T) {
 				t.Fatalf("could not parse steps: %v", err)
 			}
 
-			if len(c.expected) != len(actual) {
-				t.Fatalf("len mismatch: want %+v; got %+v", c.expected, actual)
-			}
+			CompareSlices(t, c.expected, actual)
+		})
+	}
+}
 
-			for i := range c.expected {
-				want := c.expected[i]
-				got := actual[i]
+func TestParseIntervals(t *testing.T) {
+	cases := []struct {
+		name       string
+		input      string
+		min, max   uint8
+		intervals  []uint8
+		shouldFail bool
+	}{
+		{
+			name:       "invalid intervals",
+			input:      "/",
+			shouldFail: true,
+		},
+		{
+			name:       "zero repeat step",
+			input:      "*/0",
+			shouldFail: true,
+		},
+		{
+			name:       "out of bound step",
+			input:      "*/17",
+			min:        minutesMin,
+			max:        minutesMax,
+			shouldFail: true,
+		},
+		{
+			name:  "every 5 min",
+			input: "*/5",
+			min:   minutesMin,
+			max:   minutesMax,
+			intervals: []uint8{
+				0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55,
+			},
+			shouldFail: false,
+		},
+		{
+			name:  "every 5 min after 0",
+			input: "0/5",
+			min:   minutesMin,
+			max:   minutesMax,
+			intervals: []uint8{
+				0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55,
+			},
+			shouldFail: false,
+		},
+		{
+			name:  "every 5 min after 1",
+			input: "1/5",
+			min:   minutesMin,
+			max:   minutesMax,
+			intervals: []uint8{
+				1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56,
+			},
+			shouldFail: false,
+		},
+	}
 
-				if want != got {
-					t.Errorf("mismatch at %d: want %d; got %d", i, want, got)
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			intervals, err := parseIntervals(
+				strings.Split(c.input, "/"), c.min, c.max)
+			if err != nil {
+				if c.shouldFail {
+					return
 				}
+				t.Fatalf("could not parse intervals: %v", err)
 			}
+
+			CompareSlices(t, c.intervals, intervals)
 		})
 	}
 }
@@ -297,19 +371,8 @@ func TestParseTime(t *testing.T) {
 			if err != nil {
 				t.Fatalf("could not parse expression: %v", err)
 			}
-			if len(c.expected) != len(actual) {
-				t.Fatalf("len mismatch: want %+v; got %+v", c.expected, actual)
-			}
 
-			for i := range c.expected {
-				want := c.expected[i]
-				got := actual[i]
-
-				if want != got {
-					t.Errorf("mismatch at %d: want %d; got %d", i, want, got)
-				}
-			}
-
+			CompareSlices(t, c.expected, actual)
 		})
 	}
 }
